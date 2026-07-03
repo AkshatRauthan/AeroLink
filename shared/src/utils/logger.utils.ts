@@ -83,7 +83,7 @@ const winstonLogger = winston.createLogger({
  *     "err": { ... }
  *   }
  */
-export const logger = {
+const Logger = {
     /** App completely broken — requires immediate human intervention. */
     fatal: (message: string, meta?: object) =>
         (winstonLogger as any).fatal({ message, ...meta }),
@@ -108,3 +108,5 @@ export const logger = {
     trace: (message: string, meta?: object) =>
         (winstonLogger as any).trace({ message, ...meta }),
 };
+
+export default Logger;

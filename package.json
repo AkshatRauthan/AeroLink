@@ -17,5 +17,10 @@
     "devDependencies": {
         "@types/express": "4.17.21",
         "@types/node": "20.11.5"
+    },
+    "dependencies": {
+        "@types/cors": "^2.8.19",
+        "cors": "^2.8.6",
+        "http-status-codes": "^2.3.0"
     }
 }

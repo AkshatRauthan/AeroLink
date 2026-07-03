@@ -7,13 +7,11 @@
  * to the client or hide it behind a generic 500.
  */
 export default class CustomError extends Error {
-    public readonly statusCode: number;
-    public readonly errorCode: string;
+    public readonly errorCode: number;
     public readonly isOperational: boolean;
 
-    constructor(message: string, statusCode: number, errorCode: string, isOperational = true) {
+    constructor(message: string, errorCode: number, isOperational = true) {
         super(message);
-        this.statusCode = statusCode;
         this.errorCode = errorCode;
         this.isOperational = isOperational;
 

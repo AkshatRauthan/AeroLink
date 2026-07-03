@@ -1,12 +1,7 @@
+import { StatusCodes } from "http-status-codes";
 import type { Request, Response, NextFunction } from "express";
-import CustomError from "./customError.class";
 
-interface ErrorResponseBody {
-    success: false;
-    errorCode: string;
-    message: string;
-    requestId?: string;
-}
+import CustomError from "./customError.class";
 
 /**
  * Centralized error handler — register this as the LAST middleware in
@@ -14,12 +9,12 @@ interface ErrorResponseBody {
  * return their actual message + code; anything else (unexpected bugs) is
  * masked behind a generic 500 so internals never leak to the client.
  */
-export const errorHandler = (
+export default function ErrorHandler(
     err: unknown,
     req: Request,
     res: Response,
     _: NextFunction,
-): void => {
+): void {
     const requestId = req.headers['x-request-id'] as string | undefined;
 
     if (err instanceof CustomError) {
@@ -27,23 +22,18 @@ export const errorHandler = (
             console.error(`[non-operational error] ${err.errorCode}:`, err);
         }
 
-        const body: ErrorResponseBody = {
+        res.status(err.errorCode)
+        .json({
             success: false,
-            errorCode: err.errorCode,
             message: err.message,
-            requestId,
-        };
-        res.status(err.statusCode).json(body);
-        return;
+        });
     }
 
     console.error('[unhandled error]', err);
 
-    const body: ErrorResponseBody = {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR)
+    .json({
         success: false,
-        errorCode: 'INTERNAL_SERVER_ERROR',
-        message: 'Something went wrong',
-        requestId,
-    };
-    res.status(500).json(body);
+        message: "Something went wrong",
+    });
 };
