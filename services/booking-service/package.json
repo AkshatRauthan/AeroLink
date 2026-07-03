@@ -1,0 +1,25 @@
+{
+    "name": "@aerolink/booking-service",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "dev": "ts-node-dev --respawn --require tsconfig-paths/register --project tsconfig.json src/index.ts",
+        "build": "tsc && tsc-alias"
+    },
+    "dependencies": {
+        "@aerolink/shared": "workspace:*",
+        "@grpc/grpc-js": "1.14.4",
+        "argon2": "0.44.0",
+        "dotenv": "16.3.1",
+        "express": "^4.22.2",
+        "zod": "3.22.4"
+    },
+    "devDependencies": {
+        "@types/express": "4.17.21",
+        "@types/node": "20.11.5",
+        "ts-node-dev": "2.0.0",
+        "tsc-alias": "1.8.8",
+        "tsconfig-paths": "4.2.0",
+        "typescript": "5.3.3"
+    }
+}
