@@ -35,16 +35,17 @@
 - Owns user identity and session management
 
 ### 3. Flight Service
-- Flight search and seat inventory management
+- Flight catalog and search projection management
 - Consumes flight events from **Kafka** (published by Data Generation Service)
-- Reads from **Redis cache** first, falls back to MySQL read replica
+- Owns flight metadata/search data only; it does not query or mutate Booking Service tables
 
 ### 4. Booking Service
 - Core booking logic — the most critical service
 - Implements **Pessimistic Concurrency Control** (`SELECT FOR UPDATE`) for high-contention seats
 - Implements **Optimistic Concurrency Control** (version column check) for low-contention scenarios
-- Resolves correct MySQL shard before every write
-- Publishes `booking.confirmed` event to **RabbitMQ** after successful booking
+- Owns seat inventory, bookings, idempotency records, and its transactional outbox
+- Resolves the correct Booking MySQL shard before every operation
+- Publishes `booking.confirmed` from its transactional outbox after successful booking
 - Invalidates Redis cache post-write
 
 ### 5. Payment Service
@@ -92,15 +93,43 @@
 
 ## Data Layer
 
+### Data Ownership and Access Boundaries
+
+Database access is local to the owning service. `shared` provides only generic
+Knex creation and transaction helpers; it exposes neither pools nor shard
+routing. No service imports another service’s repository or database manager.
+
+| Service | Owns | Access rule |
+|---|---|---|
+| Booking Service | seats, bookings, idempotency keys, booking outbox | The only service with Booking shard credentials |
+| Flight Service | flight catalog and search projections | Cannot access Booking shards |
+| Auth Service | identities and sessions | Own database/schema when implemented |
+| Payment Service | payment attempts/provider references | Own database/schema when implemented |
+| Notification Service | delivery preferences and delivery attempts | Own database/schema when implemented |
+
+This prevents a shared database from becoming an implicit distributed monolith.
+A service obtains another domain’s data through an API or event-derived
+projection, never through a direct SQL query.
+
 ### MySQL Sharding
-- **Shard key:** `flight_id` — ensures all bookings for the same flight land on the same shard (critical for pessimistic locking to work correctly)
-- Sharding logic lives in `shared/db/shardResolver.ts`
-- `hash(flightId) % NUM_SHARDS` → resolves to correct Knex connection pool
+- Booking Service has two identical logical shards: `aerolink_booking_shard0`
+  and `aerolink_booking_shard1`.
+- **Shard key:** `flight_id` — ensures all seat inventory and bookings for the
+  same flight land on the same shard, which is critical for pessimistic locking.
+- Sharding logic lives in `services/booking-service/src/infrastructure/db/booking-shard.router.ts`.
+- `hash(flightId) % BOOKING_SHARD_COUNT` resolves the Booking Service-owned pool.
+- The shard count and hash strategy are a stable contract. Adding a shard later
+  requires an explicit resharding migration.
 
 ### Read / Write Replicas
-- **Write primary** — all INSERT / UPDATE / DELETE operations
-- **Read replicas (×2)** — all SELECT operations (seat availability, flight search)
-- Connection pools managed per shard in `shared/db/connectionPool.ts`
+- **Write primary** — all INSERT / UPDATE / DELETE operations, idempotency
+  checks, and checkout reads.
+- **Read replica (×1 per shard)** — stale-tolerant reads only, such as a
+  seat-map browse or booking-history page.
+- A booking decision never uses a replica: checkout reads the seat and performs
+  `SELECT ... FOR UPDATE` on the resolved shard’s primary in one transaction.
+- Connection pools are managed by Booking Service in
+  `services/booking-service/src/infrastructure/db/booking-db.manager.ts`.
 - Hosted on **AWS RDS** with native read replica support
 
 ### Redis Caching
@@ -120,36 +149,25 @@ Chosen over Prisma and raw `mysql2` because:
 ## Folder Structure (Feature-based / Modular)
 
 ```
-src/
-  modules/
-    booking/
-      booking.controller.ts
-      booking.service.ts
-      booking.repository.ts
-      booking.routes.ts
-      booking.validation.ts
-      booking.types.ts
-      .../
-  shared/
-    db/
-      index.ts              # exports everything
-      shardResolver.ts      # hash(flightId) % NUM_SHARDS → shard
-      connectionPool.ts     # Knex instances per shard (primary + replica)
-      transaction.ts        # transaction wrapper utility
-      migrations/
-    cache/
-      redis.ts
-    messaging/
-      rabbitmq/
-      kafka/
-    middlewares/
-      auth.middleware.ts
-      rateLimit.middleware.ts
-    errors/
-      CustomError.ts
-    utils/
-  app.ts
-  server.ts
+services/
+  booking-service/
+    src/
+      infrastructure/db/
+        booking-shard.config.ts    # Booking’s two primary/replica pairs
+        booking-shard.router.ts    # hash(flightId) → Booking shard
+        booking-db.manager.ts      # Booking-only Knex pools
+        migrations/                # runs once per Booking shard schema
+      modules/booking/
+        booking.repository.ts
+        outbox.repository.ts
+shared/
+  src/db/
+    knex.factory.ts                # generic client creation only
+    transaction.ts                 # generic transaction helper
+  src/cache/
+  src/messaging/
+  src/errors/
+  src/utils/
 ```
 
 **Why feature-based over MVC:**
@@ -163,18 +181,18 @@ src/
 ## DB Connection Manager Pattern
 
 ```ts
-// shardResolver.ts
-const getShard = (key: string) => {
-  const index = hash(key) % NUM_SHARDS;
-  return connectionPool.shards[index];
+// Booking Service: infrastructure/db/booking-shard.router.ts
+const getBookingShard = (flightId: string) => {
+  const index = hash(flightId) % BOOKING_SHARD_COUNT;
+  return getBookingShardPool(index);
 };
 
-// booking.repository.ts — read
-const { replica } = getShard(flightId);
+// Browse-only read; stale data is acceptable here.
+const { replica } = getBookingShard(flightId);
 const seats = await replica('seats').where({ flight_id: flightId });
 
-// booking.repository.ts — write with transaction
-const { primary } = getShard(flightId);
+// Checkout reads and writes on the primary, in one transaction.
+const { primary } = getBookingShard(flightId);
 await primary.transaction(async (trx) => {
   const seat = await trx('seats')
     .where({ flight_id: flightId, seat_no: seatNo })
@@ -184,10 +202,42 @@ await primary.transaction(async (trx) => {
 
   await trx('seats').where({ id: seat.id }).update({ available: false });
   await trx('bookings').insert({ user_id: userId, flight_id: flightId });
+  await trx('booking_outbox').insert({
+    event_type: 'booking.confirmed',
+    aggregate_id: bookingId,
+    payload: JSON.stringify({ bookingId, flightId, userId }),
+  });
 });
 ```
 
-**Rule:** No service talks to the DB directly. Every DB access goes through its own repository, which imports from `shared/db`.
+**Rule:** every service talks only to the database it owns, through its own
+repository. `shared/db` supplies generic mechanics but never an application
+database topology or domain access.
+
+### Booking Schema and Migration Workflow
+
+Both Booking shards have the same schema: `seats`, `bookings`,
+`idempotency_keys`, and `booking_outbox`. The outbox record is inserted in the
+same primary transaction as a booking; a separate publisher delivers it to
+RabbitMQ and marks it published. This prevents a committed booking from losing
+its event if the broker is temporarily unavailable.
+
+The migration runner lives at
+`services/booking-service/src/infrastructure/db/migrate.ts` and iterates only
+over Booking primaries. MySQL replication distributes schema changes to the
+matching replicas. Run it locally with:
+
+```bash
+pnpm --filter @aerolink/booking-service db:migrate
+```
+
+For local development, start one MySQL server with separate schemas, then
+migrate. Replication is intentionally disabled:
+
+```bash
+pnpm dev:env:up
+pnpm --filter @aerolink/booking-service db:migrate
+```
 
 ---
 

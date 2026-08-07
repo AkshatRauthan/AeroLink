@@ -2,76 +2,6 @@ version: "3.9"
 
 services:
   # ---------------------------
-  # MySQL Shard 0:
-  # ---------------------------
-  mysql-shard0-primary:
-    image: mysql:8.0
-    container_name: mysql-shard0-primary
-    command: --server-id=1 --log-bin=mysql-bin --binlog-format=ROW --gtid-mode=ON --enforce-gtid-consistency=ON
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: aerolink_shard0
-      MYSQL_REPLICATION_USER: repl
-      MYSQL_REPLICATION_PASSWORD: replpass
-    ports:
-      - "3307:3306"
-    volumes:
-      - shard0_primary_data:/var/lib/mysql
-    networks:
-      - aerolink-net
-
-  mysql-shard0-replica:
-    image: mysql:8.0
-    container_name: mysql-shard0-replica
-    command: --server-id=2 --log-bin=mysql-bin --binlog-format=ROW --gtid-mode=ON --enforce-gtid-consistency=ON --read-only=ON
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: aerolink_shard0
-    ports:
-      - "3309:3306"
-    volumes:
-      - shard0_replica_data:/var/lib/mysql
-    depends_on:
-      - mysql-shard0-primary
-    networks:
-      - aerolink-net
-
-  # ---------------------------
-  # MySQL Shard 1
-  # ---------------------------
-  mysql-shard1-primary:
-    image: mysql:8.0
-    container_name: mysql-shard1-primary
-    command: --server-id=3 --log-bin=mysql-bin --binlog-format=ROW --gtid-mode=ON --enforce-gtid-consistency=ON
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: aerolink_shard1
-      MYSQL_REPLICATION_USER: repl
-      MYSQL_REPLICATION_PASSWORD: replpass
-    ports:
-      - "3308:3306"
-    volumes:
-      - shard1_primary_data:/var/lib/mysql
-    networks:
-      - aerolink-net
-
-  mysql-shard1-replica:
-    image: mysql:8.0
-    container_name: mysql-shard1-replica
-    command: --server-id=4 --log-bin=mysql-bin --binlog-format=ROW --gtid-mode=ON --enforce-gtid-consistency=ON --read-only=ON
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: aerolink_shard1
-    ports:
-      - "3310:3306"
-    volumes:
-      - shard1_replica_data:/var/lib/mysql
-    depends_on:
-      - mysql-shard1-primary
-    networks:
-      - aerolink-net
-
-  # ---------------------------
   # RabbitMQ
   # ---------------------------
   rabbitmq:
@@ -146,10 +76,6 @@ networks:
     driver: bridge
 
 volumes:
-  shard0_primary_data:
-  shard0_replica_data:
-  shard1_primary_data:
-  shard1_replica_data:
   rabbitmq_data:
   kafka_data:
   redis_data:

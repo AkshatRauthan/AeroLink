@@ -8,7 +8,6 @@
         "pnpm": ">=9.0.0"
     },
     "scripts": {
-        "dev:db:replicate": "./scripts/setup-replication.sh",
         "dev:env:up": "docker compose -f docker-compose.dev.yaml up -d",
         "dev:env:stop": "docker compose -f docker-compose.dev.yaml stop",
         "dev:env:start": "docker compose -f docker-compose.dev.yaml start",
