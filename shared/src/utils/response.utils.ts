@@ -1,29 +1,23 @@
 export interface ISuccessResponse<T = unknown> {
     success: true;
+    message: string,
     data: T;
-    requestId?: string;
 }
 
 export interface IErrorResponse {
     success: false;
-    errorCode: string;
     message: string;
-    requestId?: string;
 }
 
-export const successResponse = <T>(data: T, requestId?: string): ISuccessResponse<T> => ({
+export const successResponse = <T>(data: T, message: string): ISuccessResponse<T> => ({
     success: true,
+    message,
     data,
-    requestId,
 });
 
 export const errorResponse = (
-    errorCode: string,
     message: string,
-    requestId?: string,
 ): IErrorResponse => ({
     success: false,
-    errorCode,
-    message,
-    requestId,
+    message
 });
