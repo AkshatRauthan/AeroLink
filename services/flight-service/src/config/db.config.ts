@@ -1,8 +1,8 @@
-import dotenv from 'dotenv';
 import path from 'path';
-
+import dotenv from 'dotenv';
 import { CustomError } from '@aerolink/shared';
 import { StatusCodes } from 'http-status-codes';
+import { getBoolean, getEnv, getPort, getPositiveInteger } from '@aerolink/shared';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
@@ -18,38 +18,6 @@ interface FlightShardEnvironment {
     primary: FlightDatabaseConnectionEnvironment;
     replica?: FlightDatabaseConnectionEnvironment;
 }
-
-const getEnv = (key: string, fallback?: string): string => {
-    const value = process.env[key] ?? fallback;
-    if (value === undefined || value.trim() === '') {
-        throw new CustomError(`Missing required environment variable: ${key}`, StatusCodes.NOT_FOUND, true);
-    }
-    return value;
-};
-
-const getPort = (key: string, fallback?: string): number => {
-    const value = Number(getEnv(key, fallback));
-    if (!Number.isInteger(value) || value < 1 || value > 65535) {
-        throw new CustomError(`Environment variable ${key} must be a valid port number.`, StatusCodes.BAD_REQUEST, true);
-    }
-    return value;
-};
-
-const getPositiveInteger = (key: string, fallback: string): number => {
-    const value = Number(getEnv(key, fallback));
-    if (!Number.isInteger(value) || value < 1) {
-        throw new CustomError(`Environment variable ${key} must be a positive integer.`, StatusCodes.BAD_REQUEST, true);
-    }
-    return value;
-};
-
-const getBoolean = (key: string, fallback: boolean): boolean => {
-    const value = process.env[key];
-    if (value === undefined || value.trim() === '') return fallback;
-    if (value === 'true') return true;
-    if (value === 'false') return false;
-    throw new CustomError(`Environment variable ${key} must be either "true" or "false".`, StatusCodes.BAD_REQUEST, true);
-};
 
 /**
  * Reads one shard's connection environment. When readReplicaEnabled is true,

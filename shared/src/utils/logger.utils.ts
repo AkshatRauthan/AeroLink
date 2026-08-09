@@ -29,14 +29,26 @@ const customLevels = {
     colors: {
         fatal: 'red',
         error: 'red',
-        warn:  'yellow',
-        info:  'green',
+        warn: 'yellow',
+        info: 'green',
         debug: 'blue',
         trace: 'gray',
     },
 };
 
 winston.addColors(customLevels.colors);
+
+/**
+ * Winston's own type only knows about its 7 built-in levels (error, warn,
+ * info, http, verbose, debug, silly), so `fatal` and `trace` aren't typed
+ * on the default Logger interface even though they exist at runtime once
+ * registered via customLevels. This interface describes the actual shape
+ * we get back, so call sites get real type checking instead of `any`.
+ */
+interface LeveledLogger extends winston.Logger {
+    fatal: winston.LeveledLogMethod;
+    trace: winston.LeveledLogMethod;
+}
 
 // Production: pure JSON — one log line per event, easy to ingest into
 // CloudWatch / Grafana / Datadog without any parsing.
@@ -64,7 +76,7 @@ const winstonLogger = winston.createLogger({
     format: NODE_ENV === 'production' ? jsonFormat : devFormat,
     transports: [new winston.transports.Console()],
     exitOnError: false,
-});
+}) as LeveledLogger;
 
 /**
  * Typed logger wrapper — enforces the 6-level convention across all services.
@@ -85,28 +97,22 @@ const winstonLogger = winston.createLogger({
  */
 const Logger = {
     /** App completely broken — requires immediate human intervention. */
-    fatal: (message: string, meta?: object) =>
-        (winstonLogger as any).fatal({ message, ...meta }),
+    fatal: (message: string, meta?: object) => winstonLogger.fatal({ message, ...meta }),
 
     /** Operation failed, user received an error, app still running. */
-    error: (message: string, meta?: object) =>
-        winstonLogger.error({ message, ...meta }),
+    error: (message: string, meta?: object) => winstonLogger.error({ message, ...meta }),
 
     /** Unexpected but recovered — user not affected. */
-    warn: (message: string, meta?: object) =>
-        winstonLogger.warn({ message, ...meta }),
+    warn: (message: string, meta?: object) => winstonLogger.warn({ message, ...meta }),
 
     /** Normal app behaviour worth recording. */
-    info: (message: string, meta?: object) =>
-        winstonLogger.info({ message, ...meta }),
+    info: (message: string, meta?: object) => winstonLogger.info({ message, ...meta }),
 
     /** Developer detail — never enable in production. */
-    debug: (message: string, meta?: object) =>
-        winstonLogger.debug({ message, ...meta }),
+    debug: (message: string, meta?: object) => winstonLogger.debug({ message, ...meta }),
 
     /** Extremely granular — never in production, floods disk. */
-    trace: (message: string, meta?: object) =>
-        (winstonLogger as any).trace({ message, ...meta }),
+    trace: (message: string, meta?: object) => winstonLogger.trace({ message, ...meta }),
 };
 
 export default Logger;
