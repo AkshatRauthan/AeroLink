@@ -1,6 +1,9 @@
 import cors, { CorsOptions } from 'cors';
 import { ServerConfig } from "@root/config";
 
+import { CustomError } from "@aerolink/shared";
+import { StatusCodes } from 'http-status-codes';
+
 const allowedOrigins: string[] = [
     ...(ServerConfig.CORS_ORIGINS
         ? ServerConfig.CORS_ORIGINS.split(',').map((o) => o.trim())
@@ -14,7 +17,7 @@ const CorsConfig: CorsOptions = {
         if (allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            callback(new Error(`CORS blocked: ${origin}`));
+            callback(new CustomError(`CORS blocked: ${origin}`, StatusCodes.FORBIDDEN, true));
         }
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

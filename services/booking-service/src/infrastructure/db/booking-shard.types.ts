@@ -10,10 +10,10 @@ export interface BookingDatabaseConnectionConfig {
 
 export interface BookingShardConfig {
     primary: BookingDatabaseConnectionConfig;
-    replica: BookingDatabaseConnectionConfig;
+    replica?: BookingDatabaseConnectionConfig;
 }
 
 export interface BookingShardPool {
     primary: Knex;
-    replica: Knex;
+    replica?: Knex;
 }
