@@ -3,7 +3,7 @@ import express, { Application, Request, Response, NextFunction } from 'express';
 
 import appRoutes from "@root/routes";
 import { CorsConfig } from "@root/config";
-import { ErrorHandler, CustomError } from '@shared/errors';
+import { ErrorHandler, CustomError } from '@aerolink/shared';
 
 const app: Application = express();
 

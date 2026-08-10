@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import { BOOKING_SHARD_COUNT } from './booking-shard.config';
-import { getBookingShardPool } from './booking-db.manager';
+import { getBookingReadPool, getBookingShardPool } from './booking-db.manager';
 
 /** All booking data for a flight maps to one shard and one locking domain. */
 export const getBookingShardIndex = (flightId: string): number => {
@@ -10,3 +10,7 @@ export const getBookingShardIndex = (flightId: string): number => {
 
 export const getBookingShard = (flightId: string) =>
     getBookingShardPool(getBookingShardIndex(flightId));
+
+/** Use only for stale-tolerant Booking reads such as booking history. */
+export const getBookingReadDatabase = (flightId: string) =>
+    getBookingReadPool(getBookingShardIndex(flightId));

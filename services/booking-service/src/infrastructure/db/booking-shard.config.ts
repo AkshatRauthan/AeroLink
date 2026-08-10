@@ -1,49 +1,22 @@
-import dotenv from 'dotenv';
-import path from 'path';
-import type { Knex } from 'knex';
+import { Knex } from 'knex';
+
+import { DbConfig } from '../../config';
 import type { BookingDatabaseConnectionConfig, BookingShardConfig } from './booking-shard.types';
 
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
-
-const env = (key: string, fallback: string): string => process.env[key] ?? fallback;
-
 /** Booking Service owns this topology; no other service imports it. */
-export const BOOKING_SHARD_COUNT = 2;
+export const BOOKING_SHARD_COUNT = DbConfig.BOOKING_SHARD_COUNT;
+export const BOOKING_READ_REPLICA_ENABLED = DbConfig.READ_REPLICA_ENABLED;
 
-export const bookingShardConfigs: BookingShardConfig[] = [
-    {
-        primary: {
-            host: env('BOOKING_SHARD0_PRIMARY_HOST', '127.0.0.1'),
-            port: Number(env('BOOKING_SHARD0_PRIMARY_PORT', '3307')),
-            user: env('BOOKING_DB_USER', 'booking_service'),
-            password: env('BOOKING_DB_PASSWORD', 'booking_service_password'),
-            database: env('BOOKING_SHARD0_DB_NAME', 'aerolink_booking_shard0'),
-        },
-        replica: {
-            host: env('BOOKING_SHARD0_REPLICA_HOST', '127.0.0.1'),
-            port: Number(env('BOOKING_SHARD0_REPLICA_PORT', '3309')),
-            user: env('BOOKING_DB_USER', 'booking_service'),
-            password: env('BOOKING_DB_PASSWORD', 'booking_service_password'),
-            database: env('BOOKING_SHARD0_DB_NAME', 'aerolink_booking_shard0'),
-        },
+export const bookingShardConfigs: BookingShardConfig[] = Array.from(
+    { length: BOOKING_SHARD_COUNT },
+    (_, shardIndex) => {
+        const shard = DbConfig.getBookingShardEnvironment(shardIndex);
+        return {
+            primary: { ...shard.primary },
+            ...(shard.replica ? { replica: { ...shard.replica } } : {}),
+        };
     },
-    {
-        primary: {
-            host: env('BOOKING_SHARD1_PRIMARY_HOST', '127.0.0.1'),
-            port: Number(env('BOOKING_SHARD1_PRIMARY_PORT', '3308')),
-            user: env('BOOKING_DB_USER', 'booking_service'),
-            password: env('BOOKING_DB_PASSWORD', 'booking_service_password'),
-            database: env('BOOKING_SHARD1_DB_NAME', 'aerolink_booking_shard1'),
-        },
-        replica: {
-            host: env('BOOKING_SHARD1_REPLICA_HOST', '127.0.0.1'),
-            port: Number(env('BOOKING_SHARD1_REPLICA_PORT', '3310')),
-            user: env('BOOKING_DB_USER', 'booking_service'),
-            password: env('BOOKING_DB_PASSWORD', 'booking_service_password'),
-            database: env('BOOKING_SHARD1_DB_NAME', 'aerolink_booking_shard1'),
-        },
-    },
-];
+);
 
 export const buildBookingKnexConfig = (
     connection: BookingDatabaseConnectionConfig,

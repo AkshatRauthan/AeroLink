@@ -4,7 +4,8 @@
     "private": true,
     "scripts": {
         "dev": "ts-node-dev --respawn --require tsconfig-paths/register --project tsconfig.json src/index.ts",
-        "build": "tsc && tsc-alias"
+        "build": "tsc && tsc-alias",
+        "db:migrate": "ts-node-dev --exit-child --require tsconfig-paths/register --project tsconfig.json src/infrastructure/db/migrate.ts"
     },
     "dependencies": {
         "@aerolink/shared": "workspace:*",
@@ -12,6 +13,9 @@
         "argon2": "0.44.0",
         "dotenv": "16.3.1",
         "express": "^4.22.2",
+        "ioredis": "5.3.2",
+        "knex": "3.1.0",
+        "mysql2": "^3.22.5",
         "zod": "3.22.4"
     },
     "devDependencies": {
