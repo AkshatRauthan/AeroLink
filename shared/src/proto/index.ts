@@ -1,1 +1,1 @@
-export * from "./grpc.client";
+export * as GrpcClients from "./grpc.client";

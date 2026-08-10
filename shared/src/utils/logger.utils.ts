@@ -16,7 +16,7 @@ const LOG_LEVEL = env('MIN_LOG_LEVEL', 'info');
  *   logger.info   — normal behaviour worth knowing (startup, batch complete)
  *   logger.debug  — developer detail, turn off in production
  *   logger.trace  — extremely granular, never in production
- */
+ */ 
 const customLevels = {
     levels: {
         fatal: 0,
@@ -53,7 +53,9 @@ interface LeveledLogger extends winston.Logger {
 // Production: pure JSON — one log line per event, easy to ingest into
 // CloudWatch / Grafana / Datadog without any parsing.
 const jsonFormat = winston.format.combine(
-    winston.format.timestamp({ format: 'ISO' }),
+    winston.format.timestamp({
+        format: () => new Date().toISOString(),
+    }),
     winston.format.errors({ stack: true }),
     winston.format.json(),
 );

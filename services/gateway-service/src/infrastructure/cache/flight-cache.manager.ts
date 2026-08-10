@@ -1,4 +1,4 @@
-import { createRedisClient, createCacheManager, pingRedis } from '@aerolink/shared';
+import { createRedisClient, createCacheManager, pingRedis } from '@aerolink/shared/cache';
 import { gatewayRedisConfig } from '@root/config';
 
 const gatewayRedisClient = createRedisClient(gatewayRedisConfig, 'gateway-redis');

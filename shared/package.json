@@ -6,7 +6,7 @@
     "types": "./dist/index.d.ts",
     "scripts": {
         "dev": "ts-node-dev --respawn --require tsconfig-paths/register --project tsconfig.json src/index.ts",
-        "build": "tsc && tsc-alias"
+        "build": "tsc && tsc-alias && cp src/proto/*.proto dist/proto/"
     },
     "dependencies": {
         "@aws-sdk/client-secrets-manager": "^3.1075.0",
@@ -31,5 +31,27 @@
         "tsc-alias": "1.8.8",
         "tsconfig-paths": "4.2.0",
         "typescript": "5.3.3"
-    }
+    },
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        },
+        "./db": {
+            "types": "./dist/db/index.d.ts",
+            "default": "./dist/db/index.js"
+        },
+        "./cache": {
+            "types": "./dist/cache/index.d.ts",
+            "default": "./dist/cache/index.js"
+        },
+        "./messaging": {
+            "types": "./dist/messaging/index.d.ts",
+            "default": "./dist/messaging/index.js"
+        },
+        "./proto": {
+            "types": "./dist/proto/index.d.ts",
+            "default": "./dist/proto/index.js"
+        }
+}
 }

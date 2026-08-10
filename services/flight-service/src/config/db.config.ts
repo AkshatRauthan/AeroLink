@@ -1,10 +1,6 @@
-import path from 'path';
-import dotenv from 'dotenv';
 import { CustomError } from '@aerolink/shared';
 import { StatusCodes } from 'http-status-codes';
 import { getBoolean, getEnv, getPort, getPositiveInteger } from '@aerolink/shared';
-
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 interface FlightDatabaseConnectionEnvironment {
     host: string;
