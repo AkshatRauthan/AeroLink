@@ -1,5 +1,5 @@
 import type { Knex } from 'knex';
-import { DbConfig } from '../../config';
+import { DbConfig } from '@root/config';
 import type { AuthDatabaseConnectionConfig, AuthShardConfig } from './auth-shard.types';
 
 export const AUTH_SHARD_COUNT = DbConfig.AUTH_SHARD_COUNT;

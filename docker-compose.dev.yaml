@@ -71,6 +71,21 @@ services:
     networks:
       - aerolink-net
 
+  # ---------------------------
+  # RedisInsight (Redis UI)
+  # ---------------------------
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: aerolink-redis-insight
+    ports:
+      - "8082:5540" # Maps to port 8082 on your localhost
+    depends_on:
+      - redis
+    networks:
+      - aerolink-net
+    volumes:
+      - redis_insight_data:/data
+
 networks:
   aerolink-net:
     driver: bridge
@@ -79,3 +94,4 @@ volumes:
   rabbitmq_data:
   kafka_data:
   redis_data:
+  redis_insight_data:

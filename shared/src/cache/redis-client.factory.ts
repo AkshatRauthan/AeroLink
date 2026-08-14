@@ -1,30 +1,116 @@
+import { Logger } from '@shared/utils';
 import Redis, { RedisOptions } from 'ioredis';
+import { CustomError } from '@shared/index';
 
 /**
  * Generic Redis client factory. Each service builds its own client from its
  * own env-driven config — shared only owns consistent wiring (timeouts,
  * retry strategy, logging), not connection details or key patterns.
+ *
+ * Reconnect behaviour: retries indefinitely on disconnect (never gives up),
+ * since a long-running service should self-heal once Redis comes back
+ * rather than require a manual restart. This factory never escalates to
+ * fatal/crashes the process on a Redis outage — if a specific service
+ * considers Redis mission-critical enough to warrant that, it implements
+ * that decision itself on top of this client, not here.
+ *
+ * Logging is throttled during a sustained outage to avoid flooding logs
+ * with a near-identical line every retry cycle: the first few attempts
+ * log in full, then it drops to a sparse cadence until reconnected.
  */
 export const createRedisClient = (options: RedisOptions, label = 'redis'): Redis => {
     const client = new Redis({
         connectTimeout: 5000,
         maxRetriesPerRequest: 2,
-        retryStrategy: (times) => Math.min(times * 200, 2000),
+        retryStrategy: (times) => {
+            reconnectAttempts = times;
+            return Math.min(times * 500, 10000);
+        },
         ...options,
     });
 
-    client.on('error', (err) => console.error(`[${label}] connection error:`, err.message));
-    client.on('connect', () => console.log(`[${label}] connected`));
+    // Tracking for attempt count + outage duration across the retry loop.
+    let reconnectAttempts = 0;
+    let disconnectedAt: number | null = null;
+    let hasConnectedOnce = false;
+
+    const FULL_LOG_ATTEMPT_THRESHOLD = 5; // log every attempt up to this point
+    const SPARSE_LOG_INTERVAL = 10; // beyond that, only log every Nth attempt
+
+    client.on('error', (err: Error) => {
+        const shouldLog =
+            reconnectAttempts <= FULL_LOG_ATTEMPT_THRESHOLD || reconnectAttempts % SPARSE_LOG_INTERVAL === 0;
+
+        if (shouldLog) {
+            Logger.error(`${label} connection error`, {
+                label,
+                attempt: reconnectAttempts,
+                message: err.message,
+                stack: err.stack,
+            });
+        }
+    });
+
+    client.on('close', () => {
+        if (disconnectedAt === null) {
+            disconnectedAt = Date.now();
+        }
+
+        const shouldLog =
+            reconnectAttempts <= FULL_LOG_ATTEMPT_THRESHOLD || reconnectAttempts % SPARSE_LOG_INTERVAL === 0;
+
+        if (shouldLog) {
+            Logger.warn(`${label} connection closed`, { label, attempt: reconnectAttempts });
+        }
+    });
+
+    client.on('reconnecting', (delay: number) => {
+        const shouldLog =
+            reconnectAttempts <= FULL_LOG_ATTEMPT_THRESHOLD || reconnectAttempts % SPARSE_LOG_INTERVAL === 0;
+
+        if (shouldLog) {
+            Logger.warn(`${label} reconnecting`, { label, attempt: reconnectAttempts, delay });
+        }
+    });
+
+    client.on('connect', () => {
+        if (disconnectedAt !== null) {
+            const downtimeMs = Date.now() - disconnectedAt;
+            Logger.info(`${label} reconnected after outage`, {
+                label,
+                downtimeMs,
+                attempts: reconnectAttempts,
+            });
+        } else if (!hasConnectedOnce) {
+            Logger.info(`${label} connected`, { label });
+        }
+
+        hasConnectedOnce = true;
+        disconnectedAt = null;
+        reconnectAttempts = 0;
+    });
+
+    client.on('ready', () => {
+        Logger.info(`${label} ready to accept commands`, { label });
+    });
+
+    client.on('end', () => {
+        Logger.warn(`${label} connection ended, no more reconnection attempts`, { label });
+    });
 
     return client;
 };
 
-/** Verifies a Redis client is reachable — for startup healthchecks, mirrors connectFlightDatabases. */
+/**
+ * Verifies a Redis client is reachable — for startup healthchecks, mirrors
+ * connectFlightDatabases(). Throws CustomError(isOperational=true) since an
+ * unreachable cache at boot is an anticipated failure, not a bug.
+ */
 export const pingRedis = async (client: Redis, label = 'redis'): Promise<void> => {
     try {
         await client.ping();
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`${label} is unreachable: ${message}`);
+        throw new CustomError(`${label} is unreachable: ${message}`, 503, true);
     }
 };

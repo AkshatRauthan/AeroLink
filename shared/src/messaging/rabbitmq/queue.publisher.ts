@@ -1,3 +1,4 @@
+import { Logger } from "@shared/utils";
 import { getRabbitChannel } from "./rabbitmq.client";
 import { getRetryQueueName, getDlqName, RetryConfig } from "./queue.config";
 
@@ -78,7 +79,7 @@ export const requeueWithBackoff = async (
             persistent: true,
             headers: { 'x-retry-count': attempt, 'x-failed-reason': 'max_attempts_exceeded' },
         });
-        console.warn(`[rabbitmq] message moved to DLQ for ${queue} after ${attempt} attempts`);
+        Logger.warn(`[rabbitmq] message moved to DLQ for ${queue}`, { queue, attempt });
         return;
     }
 

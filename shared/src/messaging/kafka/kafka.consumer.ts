@@ -1,3 +1,4 @@
+import { Logger } from "@shared/utils";
 import { createKafkaConsumer } from './kafka.client';
 
 type Handler = (message: unknown, key: string | null) => Promise<void>;
@@ -20,10 +21,10 @@ export const consumeTopic = async (
     handler: Handler,
 ): Promise<void> => {
     const consumer = await createKafkaConsumer(groupId);
+    
     await consumer.subscribe({ topic, fromBeginning: false });
-
     await consumer.run({
-        eachMessage: async ({ message }) => {
+        eachMessage: async ({ topic: msgTopic, partition, message }) => {
             try {
                 const payload = message.value ? JSON.parse(message.value.toString()) : null;
                 const key = message.key ? message.key.toString() : null;
@@ -32,10 +33,16 @@ export const consumeTopic = async (
                 // Kafka has no native DLQ — a poison message will block this
                 // partition unless handled. Log loudly; consider a manual
                 // dead-letter topic later if this becomes a real problem.
-                console.error(`[kafka] handler failed for topic ${topic}:`, err);
+                Logger.error(`[kafka] handler failed for topic ${topic}`, {
+                    topic,
+                    partition,
+                    offset: message.offset,
+                    message: err instanceof Error ? err.message : String(err),
+                    stack: err instanceof Error ? err.stack : undefined,
+                });
             }
         },
     });
 
-    console.log(`[kafka] consuming ${topic} (group: ${groupId})`);
+    Logger.info(`[kafka] consuming ${topic}`, { topic, groupId });
 };

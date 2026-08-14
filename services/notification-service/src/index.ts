@@ -5,6 +5,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 import app from '@root/app';
 import { ServerConfig } from "@root/config";
 import { CustomError, Logger } from '@aerolink/shared';
+import { connectNotificationCache } from './infrastructure/cache';
 import { connectNotificationDatabases } from "@root/infrastructure/db";
 
 const HOST = process.env.HOST || '127.0.0.1';
@@ -19,6 +20,17 @@ connectNotificationDatabases().then(() => {
     Logger.info("Notification database connected successfully")
 }).catch((error) => {
     Logger.error("Notification database connection failed", {
+        stack: error instanceof Error ? error.stack : undefined,
+        message: error instanceof Error ? error.message : String(error),
+        errorCode: error instanceof CustomError ? error.errorCode : 500,
+        isOperational: error instanceof CustomError ? error.isOperational : false,
+    })
+});
+
+connectNotificationCache().then(() => {
+    Logger.info("Notification cache connected successfully")
+}).catch((error) => {
+    Logger.error("Notification cache connection failed", {
         stack: error instanceof Error ? error.stack : undefined,
         message: error instanceof Error ? error.message : String(error),
         errorCode: error instanceof CustomError ? error.errorCode : 500,

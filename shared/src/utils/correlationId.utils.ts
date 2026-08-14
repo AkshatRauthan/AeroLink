@@ -1,4 +1,4 @@
-import { v7 as uuidv7 } from 'uuid';
+import { uuidv7 } from 'uuidv7';
 import type { Request, Response, NextFunction } from 'express';
 
 export const REQUEST_ID_HEADER = 'x-request-id';

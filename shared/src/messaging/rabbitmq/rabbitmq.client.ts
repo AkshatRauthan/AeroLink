@@ -1,3 +1,4 @@
+import { Logger } from "@shared/utils";
 import amqp, { Connection, ConfirmChannel } from 'amqplib';
 
 const env = (key: string, fallback: string) => process.env[key] ?? fallback;
@@ -20,9 +21,14 @@ export const getRabbitChannel = async (): Promise<ConfirmChannel> => {
     if (confirmChannel) return confirmChannel;
 
     connection = await amqp.connect(RABBITMQ_URL);
-    connection.on('error', (err: any) => console.error('[rabbitmq] connection error:', err.message));
+    
+    connection.on('error', (err: Error) => Logger.error('[rabbitmq] connection error', {
+        message: err.message,
+        stack: err.stack,
+    }));
+
     connection.on('close', () => {
-        console.warn('[rabbitmq] connection closed');
+        Logger.warn('[rabbitmq] connection closed');
         confirmChannel = null;
         connection = null;
     });

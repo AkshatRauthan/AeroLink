@@ -8,10 +8,10 @@
         "pnpm": ">=9.0.0"
     },
     "scripts": {
-        "dev:env:up": "docker compose -f docker-compose.dev.yaml up -d",
+       "dev:env:up": "docker compose -f docker-compose.dev.yaml up -d --build --remove-orphans",
         "dev:env:stop": "docker compose -f docker-compose.dev.yaml stop",
         "dev:env:start": "docker compose -f docker-compose.dev.yaml start",
-        "dev:env:delete": "docker compose -f docker-compose.dev.yaml down"
+        "dev:env:delete": "docker compose -f docker-compose.dev.yaml down -v"
     },
     "devDependencies": {
         "@types/express": "4.17.21",

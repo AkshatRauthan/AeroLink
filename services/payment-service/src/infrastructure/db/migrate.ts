@@ -1,23 +1,44 @@
 import path from 'path';
+import { CustomError, Logger } from '@aerolink/shared';
 import { closePaymentDatabaseConnections, getAllPaymentPrimaryPools } from './payment-db.manager';
 
 /** Runs Payment Service migrations on every primary shard. */
 const run = async (): Promise<void> => {
     const directory = path.resolve(__dirname, 'migrations');
-    for (const [shardIndex, primary] of getAllPaymentPrimaryPools().entries()) {
+    
+    const pools = getAllPaymentPrimaryPools();
+    const primaryPools = pools.entries();
+
+    if (pools.length <= 0) {
+        throw new CustomError(
+            'No payment primary shards reachable for db migration', 500, true
+        );
+    }
+
+    for (const [shardIndex, primary] of primaryPools) {
         const [batch, migrations] = await primary.migrate.latest({
             directory,
             loadExtensions: ['.js', '.ts'],
         });
-        console.log(migrations.length
-            ? `Payment shard ${shardIndex}: batch ${batch} ran ${migrations.length} migration(s).`
-            : `Payment shard ${shardIndex}: already up to date.`);
+        Logger.info(
+            migrations.length ? 
+            `Payment shard ${shardIndex}: batch ${batch} ran ${migrations.length} migration(s)` :
+            `Payment shard ${shardIndex}: already up to date`, {
+            shardIndex,
+            migrationsRun: migrations.length
+        })
     }
 };
 
 run()
-    .catch((error: unknown) => {
-        console.error('Payment database migration failed:', error);
+    .catch((error) => {
+        Logger.fatal(
+            'Auth database migration failed', {
+            stack: error instanceof Error ? error.stack : undefined,
+            message: error instanceof Error ? error.message : String(error),
+            errorCode: error instanceof CustomError ? error.errorCode : 500,
+            isOperational: error instanceof CustomError ? error.isOperational : false,
+        })
         process.exitCode = 1;
     })
     .finally(closePaymentDatabaseConnections);

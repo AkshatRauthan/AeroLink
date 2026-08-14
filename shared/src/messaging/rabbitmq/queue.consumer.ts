@@ -1,3 +1,4 @@
+import { Logger } from '@shared/utils';
 import type { ConsumeMessage } from 'amqplib';
 import { getRabbitChannel } from './rabbitmq.client';
 import { setupRetryTopology, requeueWithBackoff } from './queue.publisher';
@@ -30,12 +31,17 @@ export const consumeQueue = async (queue: string, handler: Handler): Promise<voi
             await handler(payload);
             channel.ack(msg);
         } catch (err) {
-            console.error(`[rabbitmq] handler failed for ${queue}, attempt ${attempt}:`, err);
+            Logger.error(`[rabbitmq] handler failed for ${queue}`, {
+                queue,
+                attempt,
+                message: err instanceof Error ? err.message : String(err),
+                stack: err instanceof Error ? err.stack : undefined,
+            });
             channel.ack(msg); // ack the original — we're explicitly requeueing via retry queue
             const payload = JSON.parse(msg.content.toString());
             await requeueWithBackoff(queue, payload, attempt);
         }
     });
 
-    console.log(`[rabbitmq] consuming ${queue}`);
+    Logger.info(`[rabbitmq] consuming ${queue}`, { queue });
 };

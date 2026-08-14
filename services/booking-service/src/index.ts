@@ -5,6 +5,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 import app from '@root/app';
 import { ServerConfig } from "@root/config";
 import { CustomError, Logger } from '@aerolink/shared';
+import { connectBookingCache } from "@root/infrastructure/cache";
 import { connectBookingDatabases } from "@root/infrastructure/db";
 
 const HOST = process.env.HOST || '127.0.0.1';
@@ -19,6 +20,17 @@ connectBookingDatabases().then(() => {
     Logger.info("Booking database connected successfully")
 }).catch((error) => {
     Logger.error("Booking database connection failed", {
+        stack: error instanceof Error ? error.stack : undefined,
+        message: error instanceof Error ? error.message : String(error),
+        errorCode: error instanceof CustomError ? error.errorCode : 500,
+        isOperational: error instanceof CustomError ? error.isOperational : false,
+    })
+});
+
+connectBookingCache().then(() => {
+    Logger.info("Booking cache connected successfully")
+}).catch((error) => {
+    Logger.error("Booking cache connection failed", {
         stack: error instanceof Error ? error.stack : undefined,
         message: error instanceof Error ? error.message : String(error),
         errorCode: error instanceof CustomError ? error.errorCode : 500,

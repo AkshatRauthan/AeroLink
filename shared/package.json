@@ -19,14 +19,13 @@
         "kafkajs": "2.2.4",
         "knex": "3.1.0",
         "mysql2": "^3.22.5",
-        "uuid": "^14.0.1",
+        "uuidv7": "^1.2.1",
         "winston": "3.11.0",
         "zod": "3.22.4"
     },
     "devDependencies": {
         "@types/amqplib": "0.10.4",
         "@types/node": "20.11.5",
-        "@types/uuid": "^11.0.0",
         "ts-node-dev": "2.0.0",
         "tsc-alias": "1.8.8",
         "tsconfig-paths": "4.2.0",
@@ -53,5 +52,5 @@
             "types": "./dist/proto/index.d.ts",
             "default": "./dist/proto/index.js"
         }
-}
+    }
 }

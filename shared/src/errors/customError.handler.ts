@@ -2,6 +2,7 @@ import { StatusCodes } from "http-status-codes";
 import type { Request, Response, NextFunction } from "express";
 
 import CustomError from "./customError.class";
+import { Logger } from "@shared/utils";
 
 /**
  * Centralized error handler — register this as the LAST middleware in
@@ -19,21 +20,31 @@ export default function ErrorHandler(
 
     if (err instanceof CustomError) {
         if (!err.isOperational) {
-            console.error(`[non-operational error] ${err.errorCode}:`, err);
+            Logger.error(`[non-operational error] ${err.message}`, {
+                requestId,
+                stack: err.stack,
+                message: err.message,
+                errorCode: err.errorCode,
+                isOperational: err.isOperational,
+            });
         }
 
-        res.status(err.errorCode)
-        .json({
+        res.status(err.errorCode).json({
             success: false,
             message: err.message,
         });
+        return;
     }
 
-    console.error('[unhandled error]', err);
+    Logger.error('[unhandled error]', {
+        requestId,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+    });
 
     res.status(StatusCodes.INTERNAL_SERVER_ERROR)
-    .json({
-        success: false,
-        message: "Something went wrong",
-    });
+        .json({
+            success: false,
+            message: "Something went wrong",
+        });
 };
