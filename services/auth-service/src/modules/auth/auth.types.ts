@@ -6,7 +6,7 @@ import { UserRoleEnums } from "./auth.constants";
 
 export type UserRole = typeof UserRoleEnums[keyof typeof UserRoleEnums];
 
-export interface User {
+export interface IUser {
     id: string;
 
     email: string;
@@ -22,15 +22,15 @@ export interface User {
     updatedAt: Date;
 }
 
-export interface UserProfile {
+export interface IUserProfile {
     id: string;
 
     firstName: string;
-    middleName?: string;
+    middleName: string | null;
     lastName: string;
 
     phoneNo: string;
-    address?: string;
+    address: string | null;
 
     createdAt: Date;
     updatedAt: Date;
