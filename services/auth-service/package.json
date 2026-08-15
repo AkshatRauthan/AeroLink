@@ -3,8 +3,10 @@
     "version": "1.0.0",
     "private": true,
     "scripts": {
+        "build": "tsc && tsc-alias",
         "dev": "ts-node-dev --respawn --require tsconfig-paths/register --project tsconfig.json src/index.ts",
-        "build": "tsc && tsc-alias"
+        "db::migration:run": "ts-node --transpile-only ./src/infrastructure/db/migrate.ts",
+        "db::migration:create": "knex migrate:make --migrations-directory ./src/infrastructure/db/migrations -x ts"
     },
     "dependencies": {
         "@aerolink/shared": "workspace:*",
@@ -17,6 +19,7 @@
         "jsonwebtoken": "9.0.2",
         "knex": "3.1.0",
         "mysql2": "^3.22.5",
+        "ts-node": "^10.9.2",
         "zod": "3.22.4"
     },
     "devDependencies": {
