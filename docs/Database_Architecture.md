@@ -19,13 +19,13 @@ while allowing Booking to scale independently when that becomes necessary.
 
 ## Data Ownership
 
-| Service | Owns | Sharding decision | Replication decision |
-|---|---|---|---|
-| Booking Service | seats, bookings, idempotency keys, booking outbox | **Yes:** two shards, routed by `flight_id` | **Yes:** one primary and one optional read replica per shard. Enable replica reads only when provisioned and healthy. |
-| Flight Service | flight catalogue and search projection | **No initially.** Use one database; revisit only when catalogue/search scale proves it necessary. | **No initially.** Add a read replica only if search reads overload the primary. |
-| Auth Service | users, credentials, refresh sessions | **No.** Identity data should remain in one database with strong constraints. | **No initially.** Add a replica only for demonstrated read pressure; authentication-sensitive reads stay on the primary. |
-| Payment Service | payment attempts and provider references | **No.** Prioritise idempotency and auditability over partitioning. | **No initially.** A future reporting replica must never handle payment state transitions. |
-| Notification Service | delivery preferences and delivery attempts | **No.** Queue consumers provide horizontal throughput. | **No initially.** Add one only if notification history/reporting becomes read-heavy. |
+| Service              | Owns                                              | Sharding decision                                                                                 | Replication decision                                                                                                     |
+| -------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Booking Service      | seats, bookings, idempotency keys, booking outbox | **Yes:** two shards, routed by `flight_id`                                                        | **Yes:** one primary and one optional read replica per shard. Enable replica reads only when provisioned and healthy.    |
+| Flight Service       | flight catalogue and search projection            | **No initially.** Use one database; revisit only when catalogue/search scale proves it necessary. | **No initially.** Add a read replica only if search reads overload the primary.                                          |
+| Auth Service         | users, credentials, refresh sessions              | **No.** Identity data should remain in one database with strong constraints.                      | **No initially.** Add a replica only for demonstrated read pressure; authentication-sensitive reads stay on the primary. |
+| Payment Service      | payment attempts and provider references          | **No.** Prioritise idempotency and auditability over partitioning.                                | **No initially.** A future reporting replica must never handle payment state transitions.                                |
+| Notification Service | delivery preferences and delivery attempts        | **No.** Queue consumers provide horizontal throughput.                                            | **No initially.** Add one only if notification history/reporting becomes read-heavy.                                     |
 
 Each service has a dedicated database/schema and a dedicated database user with
 permissions only for that service’s data. For example, `booking_service` can
@@ -43,7 +43,7 @@ Booking is the only initially sharded domain because seat allocation is both
 write-heavy and contention-sensitive. The shard key is `flight_id`.
 
 ```text
-                        
+
 Client booking request ────────────────────────────┐
                                                    │ (hash(flight_id)%2)
               ┌────────────────────────────────────┴────────────────────────────────────┐
@@ -122,16 +122,16 @@ single primary transaction.
 const { primary } = getBookingShard(flightId);
 
 await primary.transaction(async (trx) => {
-  const seat = await trx('seats')
-    .where({ flight_id: flightId, seat_no: seatNo })
-    .forUpdate()
-    .first();
+    const seat = await trx("seats")
+        .where({ flight_id: flightId, seat_no: seatNo })
+        .forUpdate()
+        .first();
 
-  if (!seat?.available) throw new Error('SEAT_TAKEN');
+    if (!seat?.available) throw new Error("SEAT_TAKEN");
 
-  await trx('seats').where({ id: seat.id }).update({ available: false });
-  await trx('bookings').insert(booking);
-  await trx('booking_outbox').insert(bookingConfirmedEvent);
+    await trx("seats").where({ id: seat.id }).update({ available: false });
+    await trx("bookings").insert(booking);
+    await trx("booking_outbox").insert(bookingConfirmedEvent);
 });
 ```
 
@@ -143,12 +143,12 @@ its event merely because RabbitMQ is temporarily unavailable.
 
 Every Booking shard has the same schema.
 
-| Table | Purpose |
-|---|---|
-| `seats` | Seat inventory for flights assigned to that shard; includes availability and versioning fields. |
-| `bookings` | Booking lifecycle state: `PENDING`, `CONFIRMED`, `FAILED`, `EXPIRED`, or `CANCELLED`. |
-| `idempotency_keys` | Prevents duplicate booking creation when clients retry a request. |
-| `booking_outbox` | Events committed with booking changes and published asynchronously. |
+| Table              | Purpose                                                                                         |
+| ------------------ | ----------------------------------------------------------------------------------------------- |
+| `seats`            | Seat inventory for flights assigned to that shard; includes availability and versioning fields. |
+| `bookings`         | Booking lifecycle state: `PENDING`, `CONFIRMED`, `FAILED`, `EXPIRED`, or `CANCELLED`.           |
+| `idempotency_keys` | Prevents duplicate booking creation when clients retry a request.                               |
+| `booking_outbox`   | Events committed with booking changes and published asynchronously.                             |
 
 There are no cross-shard foreign keys or transactions. A workflow that spans
 multiple services uses events and a saga/state-machine design instead.

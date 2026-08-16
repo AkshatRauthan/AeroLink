@@ -4,8 +4,8 @@
     "private": true,
     "scripts": {
         "build": "tsc && tsc-alias",
-        "dev": "ts-node-dev --respawn --require tsconfig-paths/register --project tsconfig.json src/index.ts",
-        "db::migration:run": "ts-node --transpile-only ./src/infrastructure/db/migrate.ts",
+        "dev": "ts-node-dev --respawn --require tsconfig-paths/register --project tsconfig.json ./src/index.ts",
+        "db::migration:run": "ts-node --require tsconfig-paths/register --project tsconfig.json ./src/infrastructure/db/migrate.ts",
         "db::migration:create": "knex migrate:make --migrations-directory ./src/infrastructure/db/migrations -x ts"
     },
     "dependencies": {

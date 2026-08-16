@@ -27,3 +27,16 @@ export interface IRefreshToken {
     createdAt: Date;
     revokedAt: Date | null;
 }
+export interface IRefreshTokenRow {
+    id: string;
+    session_id: string;
+    token_hash: string;
+    replaced_by: string | null;
+
+    expires_at: Date;
+    created_at: Date;
+    revoked_at: Date | null;
+}
+
+export type CreateNewTokenInput = Omit<IRefreshToken, 'replacedBy' | 'revokedAt' | 'createdAt'>;
+export type CreateNewRowInput = Omit<IRefreshTokenRow, 'created_at' | 'replaced_by' | 'revoked_at'>

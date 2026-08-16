@@ -68,16 +68,16 @@ order, trace, and evolve messages safely.
 
 ```json
 {
-  "eventId": "018f...",
-  "eventType": "flight.price.updated",
-  "schemaVersion": 1,
-  "occurredAt": "2026-08-07T12:00:00.000Z",
-  "correlationId": "018f...",
-  "flightId": "flight_123",
-  "payload": {
-    "currency": "INR",
-    "price": "6499.00"
-  }
+    "eventId": "018f...",
+    "eventType": "flight.price.updated",
+    "schemaVersion": 1,
+    "occurredAt": "2026-08-07T12:00:00.000Z",
+    "correlationId": "018f...",
+    "flightId": "flight_123",
+    "payload": {
+        "currency": "INR",
+        "price": "6499.00"
+    }
 }
 ```
 
@@ -89,23 +89,23 @@ and events can be delayed or arrive out of order across partitions.
 
 Suggested topics:
 
-| Topic | Event examples | Primary consumer |
-|---|---|---|
-| `flight.data.generated` | flight created, schedule updated, route updated | Flight Service |
-| `price.updated` | price increased/decreased | Flight Service |
-| `inventory.seeded` *(optional)* | initial seat-map seed only | Booking Service |
+| Topic                           | Event examples                                  | Primary consumer |
+| ------------------------------- | ----------------------------------------------- | ---------------- |
+| `flight.data.generated`         | flight created, schedule updated, route updated | Flight Service   |
+| `price.updated`                 | price increased/decreased                       | Flight Service   |
+| `inventory.seeded` _(optional)_ | initial seat-map seed only                      | Booking Service  |
 
 ## Traffic Profiles
 
 The goal is to simulate useful workload patterns, not to generate unrealistic
 volume that only consumes local resources.
 
-| Mode | Suggested rate | Purpose |
-|---|---:|---|
-| `seed` | 500–2,000 flights over 1–2 minutes | Populate local Flight and optional Booking projections. |
-| `normal` | 1–5 updates/second | Continuous price, schedule, gate, and delay changes. |
-| `burst` | 50–100 updates/second for 30–120 seconds | Test consumer lag, batching, and recovery. |
-| `chaos` | Variable rate with invalid delivery conditions | Test idempotency, retries, and observability. |
+| Mode     |                                 Suggested rate | Purpose                                                 |
+| -------- | ---------------------------------------------: | ------------------------------------------------------- |
+| `seed`   |             500–2,000 flights over 1–2 minutes | Populate local Flight and optional Booking projections. |
+| `normal` |                             1–5 updates/second | Continuous price, schedule, gate, and delay changes.    |
+| `burst`  |       50–100 updates/second for 30–120 seconds | Test consumer lag, batching, and recovery.              |
+| `chaos`  | Variable rate with invalid delivery conditions | Test idempotency, retries, and observability.           |
 
 Recommended initial data set:
 
