@@ -28,8 +28,8 @@ export interface IRefreshToken {
     revokedAt: Date | null;
 }
 export interface IRefreshTokenRow {
-    id: string;
-    session_id: string;
+    id: Buffer;
+    session_id: Buffer;
     token_hash: string;
     replaced_by: string | null;
 

@@ -1,5 +1,5 @@
 import { CustomError } from '@aerolink/shared';
-import { resolveDatabase, convertToCamelCase } from '@root/utils';
+import { resolveDatabase, convertToCamelCase, uuidToBinary } from '@root/utils';
 import { IRefreshToken, IRefreshTokenRow, CreateNewTokenInput, CreateNewRowInput } from './token.types';
 
 const TABLE = "refresh_tokens";
@@ -15,10 +15,10 @@ const TABLE = "refresh_tokens";
  */
 
 export const RefreshTokenRepository = {
-    
+
     async findById(id: string, userId: string): Promise<IRefreshToken | null> {
         const db = resolveDatabase(userId);
-        const refreshToken = await db<IRefreshTokenRow>(TABLE).where({ id }).first();
+        const refreshToken = await db<IRefreshTokenRow>(TABLE).where({ id: uuidToBinary(id) }).first();
 
         if (!refreshToken) return null;
         return convertToCamelCase(refreshToken);
@@ -36,8 +36,8 @@ export const RefreshTokenRepository = {
 
     async findAllBySessionId(sessionId: string, userId: string): Promise<IRefreshToken[]> {
         const db = resolveDatabase(userId);
-        const rows = await db<IRefreshTokenRow>(TABLE).where({ session_id: sessionId }).orderBy("created_at", "desc");
-        return rows.map(convertToCamelCase);
+        const rows = await db<IRefreshTokenRow>(TABLE).where({ session_id: uuidToBinary(sessionId) }).orderBy("created_at", "desc");
+        return rows.map(row => convertToCamelCase(row));
     },
 
 
@@ -48,14 +48,14 @@ export const RefreshTokenRepository = {
     async create(data: CreateNewTokenInput, userId: string): Promise<IRefreshToken> {
         const db = resolveDatabase(userId);
         const row: CreateNewRowInput = {
-            id: data.id,
-            session_id: data.sessionId,
+            id: uuidToBinary(data.id),
+            session_id: uuidToBinary(data.sessionId),
             token_hash: data.tokenHash,
             expires_at: data.expiresAt,
         }
         await db<IRefreshTokenRow>(TABLE).insert(row);
 
-        const inserted = await db<IRefreshTokenRow>(TABLE).where({ id: data.id }).first();
+        const inserted = await db<IRefreshTokenRow>(TABLE).where({ id: uuidToBinary(data.id) }).first();
         if (!inserted) throw new CustomError('Failed to create refresh token', 500, false);
         return convertToCamelCase(inserted);
     },
@@ -75,7 +75,7 @@ export const RefreshTokenRepository = {
         if (Object.keys(row).length === 0) return;
 
         await db<IRefreshTokenRow>(TABLE)
-            .where({ id })
+            .where({ id: uuidToBinary(id) })
             .update(row);
     },
 
@@ -83,7 +83,7 @@ export const RefreshTokenRepository = {
     async revoke(id: string, userId: string): Promise<void> {
         const db = resolveDatabase(userId);
         await db<IRefreshTokenRow>(TABLE)
-            .where({ id })
+            .where({ id: uuidToBinary(id) })
             .update({ revoked_at: new Date() });
     },
 
@@ -94,7 +94,7 @@ export const RefreshTokenRepository = {
     async revokeAllBySessionId(sessionId: string, userId: string): Promise<void> {
         const db = resolveDatabase(userId);
         await db<IRefreshTokenRow>(TABLE)
-            .where({ session_id: sessionId })
+            .where({ session_id: uuidToBinary(sessionId) })
             .whereNull('revoked_at')
             .update({ revoked_at: new Date() });
     },
