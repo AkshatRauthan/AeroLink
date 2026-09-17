@@ -16,35 +16,53 @@ export default function ErrorHandler(
     res: Response,
     _: NextFunction,
 ): void {
-    const requestId = req.headers['x-request-id'] as string | undefined;
-
-    if (err instanceof CustomError) {
-        if (!err.isOperational) {
-            Logger.error(`[non-operational error] ${err.message}`, {
-                requestId,
-                stack: err.stack,
-                message: err.message,
-                errorCode: err.errorCode,
-                isOperational: err.isOperational,
-            });
-        }
-
-        res.status(err.errorCode).json({
-            success: false,
-            message: err.message,
-        });
+    // Headers already sent -> No need to respond again.
+    if (res.headersSent) {
         return;
     }
 
-    Logger.error('[unhandled error]', {
-        requestId,
-        message: err instanceof Error ? err.message : String(err),
-        stack: err instanceof Error ? err.stack : undefined,
-    });
+    const requestId = req.headers['x-request-id'] as string | undefined;
 
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR)
-        .json({
-            success: false,
-            message: "Something went wrong",
+    // Errors that are either (thrown) or (catched + bundled) by us....
+    if (err instanceof CustomError) {
+        Logger.error(`${err.message}`, {
+            requestId,
+            stack: err.stack,
+            message: err.message,
+            errorCode: err.errorCode,
+            isOperational: err.isOperational,
         });
+        
+        // isOperational: false => So log everything but don't expose error to client.
+        if (err.isOperational === false) {
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                success: false,
+                message: "Something went wrong while processing your request",
+            });
+        } 
+        
+        // isOperational: true => So log everything and also tell client what went wrong.
+        else {
+            res.status(err.errorCode).json({
+                success: false,
+                message: err.message
+            });
+        }
+        return;
+    } 
+    else { // Unhandled errors that missed our all safety checks....
+        
+        Logger.error( err instanceof Error? err.name: "[unhandled-error]", {
+            requestId,
+            stack: err instanceof Error ? err.stack : null,
+            message: err instanceof Error ? err.message : String(err),
+            isOperational: null,
+        });
+
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: "Something went wrong while processing your request.",
+        });
+        return;
+    }
 };

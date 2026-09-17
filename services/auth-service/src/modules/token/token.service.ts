@@ -1,10 +1,11 @@
 import jwt from 'jsonwebtoken';
 import { uuidv7 } from 'uuidv7';
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 import { ServerConfig } from '@root/config';
 import { CustomError } from '@aerolink/shared';
 import { hashToken, generateRawToken } from '@root/utils';
+import { AuthCache, AuthCacheKeys } from '@root/infrastructure/cache';
 import { RefreshTokenRepository } from './token.repository';
 import { IRefreshToken, IAccessToken } from './token.types';
 
@@ -25,7 +26,10 @@ function verifyRefreshTokenSignature(signedToken: string): string {
         .update(rawToken)
         .digest('hex');
 
-    if (signature !== expectedSignature) {
+    const sigBuf = new Uint8Array(Buffer.from(signature, 'hex'));
+    const expectedBuf = new Uint8Array(Buffer.from(expectedSignature, 'hex'));
+
+    if (sigBuf.length !== expectedBuf.length || !timingSafeEqual(sigBuf, expectedBuf)) {
         throw new CustomError('Refresh token signature invalid', 401, true);
     }
 
@@ -72,9 +76,7 @@ export const TokenService = {
         const oldToken = await this.validateRefreshToken(oldSignedToken, userId);
         const { signedToken: newSignedToken, tokenId: newTokenId } = await this.issueRefreshToken(sessionId, userId);
 
-        await RefreshTokenRepository.update(oldToken.id, { replacedBy: newTokenId }, userId);
-        await RefreshTokenRepository.revoke(oldToken.id, userId);
-
+        await RefreshTokenRepository.update(oldToken.id, { replacedBy: newTokenId, revokedAt: new Date() }, userId);
         return newSignedToken;
     },
 
@@ -102,6 +104,7 @@ export const TokenService = {
 
         if (!token) return null; // unknown token, not a reuse case
         if (token.revokedAt === null) return null; // still active, no reuse
+        if (token.replacedBy === null) return null; // revoked via logout, not token rotation — not reuse
 
         return token.sessionId;
     },
@@ -123,13 +126,38 @@ export const TokenService = {
     },
 
 
-    verifyAccessToken(token: string): IAccessToken {
+    /**
+     * Now async: JWT verification is still a pure, synchronous check, but
+     * this now also consults the sessionId blacklist afterwards — a
+     * revoked session's access tokens are rejected immediately rather than
+     * staying valid until their natural JWT expiry. Every caller (gRPC
+     * ValidateToken server, any middleware) needs to await this now.
+     *
+     * jwt.verify throws distinct error types depending on failure —
+     * jwt.TokenExpiredError for expiry, jwt.JsonWebTokenError for a bad
+     * signature/malformed token. These are distinguished here and thrown
+     * as separate CustomError messages, rather than collapsed into one
+     * generic message, so callers (e.g. the gRPC handler) can tell an
+     * expired token apart from a genuinely invalid one and a blacklisted
+     * one without re-parsing the error themselves.
+     */
+    async verifyAccessToken(token: string): Promise<IAccessToken> {
+        let decoded: IAccessToken;
         try {
-            const decoded = jwt.verify(token, ServerConfig.JWT_ACCESS_SECRET);
-            return decoded as unknown as IAccessToken;
-        } catch {
-            throw new CustomError('Invalid or expired access token', 401, true);
+            decoded = jwt.verify(token, ServerConfig.JWT_ACCESS_SECRET) as unknown as IAccessToken;
+        } catch (err) {
+            if (err instanceof jwt.TokenExpiredError) {
+                throw new CustomError('Access token has expired', 401, true);
+            }
+            throw new CustomError('Invalid access token', 401, true);
         }
+
+        const isBlacklisted = await AuthCache.exists(AuthCacheKeys.blacklistedSession(decoded.sessionId));
+        if (isBlacklisted) {
+            throw new CustomError('Access token has been revoked', 401, true);
+        }
+
+        return decoded;
     },
 
 }

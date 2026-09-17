@@ -4,6 +4,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 import app from '@root/app';
 import { ServerConfig } from "@root/config";
+import { startGrpcServer } from "@root/modules/grpc";
 import { CustomError, Logger } from '@aerolink/shared';
 import { connectAuthCache } from "@root/infrastructure/cache";
 import { connectAuthDatabases } from "@root/infrastructure/db";
@@ -31,6 +32,17 @@ connectAuthCache().then(() => {
     Logger.info("Auth cache connected successfully")
 }).catch((error) => {
     Logger.error("Auth cache connection failed", {
+        stack: error instanceof Error ? error.stack : undefined,
+        message: error instanceof Error ? error.message : String(error),
+        errorCode: error instanceof CustomError ? error.errorCode : 500,
+        isOperational: error instanceof CustomError ? error.isOperational : false,
+    })
+});
+
+startGrpcServer().then(() => {
+    Logger.info("Auth grpc server connected successfully")
+}).catch((error) => {
+    Logger.error("Auth gRPC server failed to start", {
         stack: error instanceof Error ? error.stack : undefined,
         message: error instanceof Error ? error.message : String(error),
         errorCode: error instanceof CustomError ? error.errorCode : 500,

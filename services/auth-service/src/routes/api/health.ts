@@ -5,7 +5,9 @@ import { connectAuthDatabases } from '@root/infrastructure/db';
 
 const router: Router = Router();
 
-router.get('/', (_, res) => {
+// GET /api/health -> Server health route
+router.get(
+    '/', (_, res) => {
     res.status(200).json({
         status: 'ok',
         service: ServerConfig.SERVICE_NAME,
@@ -14,7 +16,10 @@ router.get('/', (_, res) => {
     });
 });
 
-router.get('/ready', async (_, res) => {
+
+// GET /api/health/ready -> Server ready route
+router.get(
+    '/ready', async (_, res) => {
     const checks: Record<string, { status: string; message?: string }> = {};
 
     try {

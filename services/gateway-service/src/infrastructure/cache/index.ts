@@ -1,2 +1,2 @@
-export * from './flight-cache.keys';
-export * from './flight-cache.manager';
+export * from './gateway-cache.keys';
+export * from './gateway-cache.manager';

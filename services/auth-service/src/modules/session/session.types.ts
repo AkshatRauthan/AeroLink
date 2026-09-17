@@ -28,7 +28,6 @@ export interface ISessionRow {
 }
 
 export type CreateNewSessionInput = Pick<ISession, 'id' | 'userId' | 'ipAddress' | 'deviceInfo' | 'expiresAt'>;
-
 export type CreateNewSessionRowInput = Pick<ISessionRow, 'id' | 'user_id' | 'ip_address' | 'device_info' | 'expires_at'>;
 
 
@@ -49,3 +48,5 @@ export interface SessionTokenPair {
     refreshToken: string;
     session: ISession;
 }
+
+export type ISanitizedSession = Pick<ISession, 'id' | 'ipAddress' | 'deviceInfo' | 'createdAt' | 'lastActiveAt'> & { isCurrentSession: boolean };

@@ -4,27 +4,31 @@ package auth;
 
 service AuthService {
   rpc ValidateToken (ValidateTokenRequest) returns (ValidateTokenResponse);
-  rpc GenerateToken (GenerateTokenRequest) returns (GenerateTokenResponse);
+  rpc GetUser (GetUserRequest) returns (GetUserResponse);
 }
+
 
 message ValidateTokenRequest {
   string token = 1;
 }
-
 message ValidateTokenResponse {
-  bool valid = 1;
-  string userId = 2;
-  string email = 3;
-  string errorMessage = 4;
+  string userId    = 1;
+  string role      = 2;
+  string sessionId = 3;
+  string jti       = 4;
 }
 
-message GenerateTokenRequest {
+
+message GetUserRequest {
   string userId = 1;
-  string email = 2;
 }
-
-message GenerateTokenResponse {
-  string accessToken = 1;
-  string refreshToken = 2;
-  int64 expiresAt = 3;
+message GetUserResponse {
+  string id          = 1;
+  string email       = 2;
+  string phoneNo     = 3;
+  string role        = 4;
+  string firstName   = 5;
+  string middleName  = 6;
+  string lastName    = 7;
+  string address     = 8;
 }

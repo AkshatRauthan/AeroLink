@@ -6,10 +6,12 @@
     "types": "./dist/index.d.ts",
     "scripts": {
         "dev": "ts-node-dev --respawn --require tsconfig-paths/register --project tsconfig.json src/index.ts",
-        "build": "tsc && tsc-alias && cp src/proto/*.proto dist/proto/"
+        "build": "tsc && tsc-alias && cp src/proto/*.proto dist/proto/",
+        "proto:gen": "mkdir -p src/proto/generated && grpc_tools_node_protoc --plugin=protoc-gen-ts_proto=$(pnpm bin)/protoc-gen-ts_proto --ts_proto_out=src/proto/generated --ts_proto_opt=outputServices=grpc-js,env=node,esModuleInterop=true,useOptionals=messages -I src/proto src/proto/auth.proto"
     },
     "dependencies": {
         "@aws-sdk/client-secrets-manager": "^3.1075.0",
+        "@bufbuild/protobuf": "^2.15.0",
         "@grpc/grpc-js": "1.14.4",
         "@grpc/proto-loader": "0.7.10",
         "amqplib": "0.10.3",
@@ -26,7 +28,9 @@
     "devDependencies": {
         "@types/amqplib": "0.10.4",
         "@types/node": "20.11.5",
+        "grpc-tools": "^1.13.1",
         "ts-node-dev": "2.0.0",
+        "ts-proto": "^2.12.3",
         "tsc-alias": "1.8.8",
         "tsconfig-paths": "4.2.0",
         "typescript": "5.3.3"

@@ -4,7 +4,7 @@ import { authRedisConfig } from '@root/config';
 const authRedisClient = createRedisClient(authRedisConfig, 'auth-redis');
 
 /** Every Auth Service module should go through this, not the raw client. */
-export const authCache = createCacheManager(authRedisClient);
+export const AuthCache = createCacheManager(authRedisClient);
 
 /**
  * Verifies Redis is actually reachable, by pinging it. Call once during

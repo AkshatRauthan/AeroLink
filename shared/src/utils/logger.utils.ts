@@ -82,20 +82,8 @@ const winstonLogger = winston.createLogger({
 
 /**
  * Typed logger wrapper — enforces the 6-level convention across all services.
- *
- * Every log call accepts an optional `meta` object for structured context:
- *   logger.error('Failed to insert booking', { bookingId, userId, err });
- *
- * In production, this emits:
- *   {
- *     "timestamp": "2026-07-01T12:00:00.000Z",
- *     "level": "error",
- *     "service": "booking-service",
- *     "message": "Failed to insert booking",
- *     "bookingId": "...",
- *     "userId": "...",
- *     "err": { ... }
- *   }
+ * @param message The message to be displayed in the log
+ * @param meta The optional metadata field of object type
  */
 const Logger = {
     /** App completely broken — requires immediate human intervention. */

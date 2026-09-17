@@ -4,8 +4,8 @@
     "private": true,
     "scripts": {
         "build": "tsc && tsc-alias",
-        "dev": "ts-node-dev --respawn --require tsconfig-paths/register --project tsconfig.json ./src/index.ts",
-        "db::migration:run": "ts-node --require tsconfig-paths/register --project tsconfig.json ./src/infrastructure/db/migrate.ts",
+        "dev": "ts-node-dev --files --respawn --require tsconfig-paths/register --project tsconfig.json ./src/index.ts",
+        "db::migration:run": "ts-node --files --require tsconfig-paths/register --project tsconfig.json ./src/infrastructure/db/migrate.ts",
         "db::migration:create": "knex migrate:make --migrations-directory ./src/infrastructure/db/migrations -x ts"
     },
     "dependencies": {
@@ -18,15 +18,17 @@
         "ioredis": "5.3.2",
         "jsonwebtoken": "9.0.2",
         "knex": "3.1.0",
-        "uuidv7": "^1.2.1",
         "mysql2": "^3.22.5",
         "ts-node": "^10.9.2",
+        "ua-parser-js": "^2.0.10",
+        "uuidv7": "^1.2.1",
         "zod": "3.22.4"
     },
     "devDependencies": {
         "@types/express": "4.17.21",
         "@types/jsonwebtoken": "9.0.5",
         "@types/node": "20.11.5",
+        "@types/ua-parser-js": "^0.7.39",
         "ts-node-dev": "2.0.0",
         "tsc-alias": "1.8.8",
         "tsconfig-paths": "4.2.0",

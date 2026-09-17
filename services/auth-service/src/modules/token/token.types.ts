@@ -8,14 +8,14 @@ export interface IAccessToken {
     role: UserRole;
     sessionId: string;
 
-    iat: Date;
-    exp: Date;
+    iat: number;
+    exp: number;
     jti: string;
 }
 
 
 /**
- *  Refresh Token: Statefull [for implementing server side token expiration]
+ *  Refresh Token: Stateful [for implementing server side token expiration]
  */
 export interface IRefreshToken {
     id: string;
@@ -31,7 +31,7 @@ export interface IRefreshTokenRow {
     id: Buffer;
     session_id: Buffer;
     token_hash: string;
-    replaced_by: string | null;
+    replaced_by: Buffer | null;
 
     expires_at: Date;
     created_at: Date;

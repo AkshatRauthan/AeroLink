@@ -11,7 +11,7 @@ const TABLE = "refresh_tokens";
  *  This is done because during token verification, we can't afford to read a stale value from a replica in 
  *  case of any replication lag. We need to ensure that every time we read the correct value. 
  *  So, here our correctness concern overweight our primary's load reducing concern. 
- *  [DB itself is becomes meaningless if we are getting stale value when we want to be 100% sure.]
+ *  [DB itself will become meaningless if we are getting stale value when we want to be 100% sure.]
  */
 
 export const RefreshTokenRepository = {
@@ -43,6 +43,7 @@ export const RefreshTokenRepository = {
 
     /**
      * @param data The refreshToken data object having fields: id, sessionId, tokenHash, expiresAt
+     * @param userId
      * @returns The newly generated refreshToken
      */
     async create(data: CreateNewTokenInput, userId: string): Promise<IRefreshToken> {
@@ -68,23 +69,27 @@ export const RefreshTokenRepository = {
         const db = resolveDatabase(userId);
         const row: Partial<IRefreshTokenRow> = {};
 
-        if (data.replacedBy !== undefined) row.replaced_by = data.replacedBy;
+        if (data.replacedBy !== undefined) row.replaced_by = uuidToBinary(data.replacedBy!);
         if (data.revokedAt !== undefined) row.revoked_at = data.revokedAt;
         if (data.expiresAt !== undefined) row.expires_at = data.expiresAt;
         if (data.tokenHash !== undefined) row.token_hash = data.tokenHash;
         if (Object.keys(row).length === 0) return;
 
-        await db<IRefreshTokenRow>(TABLE)
+        const matchedCount = await db<IRefreshTokenRow>(TABLE)
             .where({ id: uuidToBinary(id) })
             .update(row);
+
+        if (matchedCount === 0) throw new CustomError("Refresh token to be updated is not found", 404);
     },
 
 
     async revoke(id: string, userId: string): Promise<void> {
         const db = resolveDatabase(userId);
-        await db<IRefreshTokenRow>(TABLE)
+        const matchedCount = await db<IRefreshTokenRow>(TABLE)
             .where({ id: uuidToBinary(id) })
             .update({ revoked_at: new Date() });
+
+        if (matchedCount === 0) throw new CustomError("Refresh token to be updated is not found", 404);
     },
 
 
@@ -93,9 +98,11 @@ export const RefreshTokenRepository = {
      */
     async revokeAllBySessionId(sessionId: string, userId: string): Promise<void> {
         const db = resolveDatabase(userId);
-        await db<IRefreshTokenRow>(TABLE)
+        const matchedCount = await db<IRefreshTokenRow>(TABLE)
             .where({ session_id: uuidToBinary(sessionId) })
             .whereNull('revoked_at')
             .update({ revoked_at: new Date() });
+
+        if (matchedCount === 0) throw new CustomError("Refresh token to be updated is not found", 404);
     },
 }

@@ -6,6 +6,7 @@ export async function up(knex: Knex): Promise<void> {
         table.binary('id', 16).primary();
 
         table.string('email', 255).notNullable().unique();
+        table.string('phone_no', 15).notNullable().unique();
         table.string('password', 255).notNullable();
 
         table.enum('role', Object.values(UserRoleEnums)).notNullable().defaultTo(UserRoleEnums.USER);
@@ -26,7 +27,6 @@ export async function up(knex: Knex): Promise<void> {
         table.string('middle_name', 100).nullable();
         table.string('last_name', 100).notNullable();
 
-        table.string('phone_no', 20).notNullable();
         table.string('address', 500).nullable();
 
         table.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
