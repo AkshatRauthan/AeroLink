@@ -19,6 +19,7 @@ declare module 'ioredis' {
         hsetWithTtl(key: string, field: string, value: string, ttlSeconds: number): Promise<number>;
         zaddWithTtl(key: string, score: number, member: string, ttlSeconds: number): Promise<number>;
         incrWithWindow(key: string, windowSeconds: number): Promise<number>;
+        checkAndEvictLru(key: string, limit: number): Promise<string | null>;
     }
 }
 
@@ -49,12 +50,42 @@ end
 return count
 `;
 
+// Atomically decides AND removes the LRU eviction victim in one round-trip,
+// so two concurrent callers can never both read the same "count is at
+// limit, victim is X" snapshot and both act on it — Redis executes this
+// single-threaded, so the check (ZCARD) and the removal (ZREM) can't be
+// interleaved by another client's script. If a second caller runs this
+// script microseconds later, it sees the post-removal state and picks a
+// different victim (or finds nothing to evict at all) rather than racing
+// on the same one. This closes the cache-side race; the DB-side revoke work
+// for the returned victim still happens afterward, outside this script,
+// since Lua can't reach into MySQL.
+const CHECK_AND_EVICT_LRU = `
+local key = KEYS[1]
+local limit = tonumber(ARGV[1])
+
+local count = redis.call('ZCARD', key)
+if count < limit then
+  return false
+end
+
+local victims = redis.call('ZRANGE', key, 0, 0)
+if #victims == 0 then
+  return false
+end
+
+local victim = victims[1]
+redis.call('ZREM', key, victim)
+return victim
+`;
+
 export const createCacheManager = (redisClient: Redis) => {
     // Register scripts once per client instance so they're cached
     // server-side (EVALSHA) rather than re-sent as source every call.
     redisClient.defineCommand('hsetWithTtl', { numberOfKeys: 1, lua: HSET_WITH_TTL });
     redisClient.defineCommand('zaddWithTtl', { numberOfKeys: 1, lua: ZADD_WITH_TTL });
     redisClient.defineCommand('incrWithWindow', { numberOfKeys: 1, lua: INCR_WITH_WINDOW });
+    redisClient.defineCommand('checkAndEvictLru', { numberOfKeys: 1, lua: CHECK_AND_EVICT_LRU });
 
     return {
         /**
@@ -260,6 +291,22 @@ export const createCacheManager = (redisClient: Redis) => {
          */
         async pull(key: string, member: string): Promise<number> {
             return redisClient.zrem(key, member);
+        },
+
+        /**
+         * Atomically checks whether a sorted set is at/over `limit` and, if
+         * so, removes and returns its lowest-scored member (the LRU victim)
+         * in the same Redis-side operation — closing the race where two
+         * concurrent callers both read the same "at capacity, victim is X"
+         * snapshot from separate zCard/zRange calls and both act on it.
+         * Returns null if under the limit or the set is empty (nothing to
+         * evict). The caller still owns any DB-side cleanup for the
+         * returned victim (revoking tokens, the session row, blacklisting)
+         * — this only handles the cache-side decision+removal atomically.
+         */
+        async checkAndEvictLru(key: string, limit: number): Promise<string | null> {
+            const victim = await redisClient.checkAndEvictLru(key, limit);
+            return victim || null;
         },
     };
 };

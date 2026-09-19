@@ -24,18 +24,17 @@ export const SessionService = {
     async createSession(input: CreateSessionInput): Promise<SessionTokenPair> {
         const sessionsKey = AuthCacheKeys.userSessions(input.userId);
 
-        const activeCount = await AuthCache.zCard(sessionsKey);
-        if (activeCount >= ServerConfig.MAX_CONCURRENT_SESSIONS_PER_USER) {
-            // zRange is ascending by score (lastActiveAt), so index 0 is the
-            // least-recently-active session — the LRU eviction target.
-            const [lruSessionId] = await AuthCache.zRange(sessionsKey, 0, 0);
-            if (lruSessionId) {
-                // revokeSession handles the DB row, refresh tokens, blacklist
-                // entry, AND pulls this sessionId out of the sorted set — so
-                // eviction reuses the exact same revoke path logout does,
-                // rather than a separate ad-hoc path.
-                await this.revokeSession(lruSessionId, input.userId);
-            }
+        // checkAndEvictLru does the "at capacity? find oldest? remove it"
+        // sequence as one atomic Redis-side operation, so two concurrent
+        // logins for the same user can't both read the same victim from
+        // separate zCard/zRange calls and both act on it — see cache.manager.ts.
+        const lruEvictedSessionId = await AuthCache.checkAndEvictLru(sessionsKey, ServerConfig.MAX_CONCURRENT_SESSIONS_PER_USER);
+        if (lruEvictedSessionId) {
+            // The sorted-set removal already happened atomically above;
+            // revokeSession still handles the DB row, refresh tokens, and
+            // blacklist entry for that victim. Its own AuthCache.pull call
+            // becomes a harmless no-op here since the member is already gone.
+            await this.revokeSession(lruEvictedSessionId, input.userId);
         }
 
         const id = uuidv7();

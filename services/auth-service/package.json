@@ -5,6 +5,7 @@
     "scripts": {
         "build": "tsc && tsc-alias",
         "dev": "ts-node-dev --files --respawn --require tsconfig-paths/register --project tsconfig.json ./src/index.ts",
+        "db::cleanup": "ts-node --require tsconfig-paths/register --project tsconfig.json ./src/infrastructure/db/db.cleanup.ts",
         "db::migration:run": "ts-node --files --require tsconfig-paths/register --project tsconfig.json ./src/infrastructure/db/migrate.ts",
         "db::migration:create": "knex migrate:make --migrations-directory ./src/infrastructure/db/migrations -x ts"
     },
