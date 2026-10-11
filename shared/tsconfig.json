@@ -8,6 +8,9 @@
         "paths": {
             "@shared/*": [
                 "./src/*"
+            ],
+            "@shared": [
+                "./src"
             ]
         }
     },

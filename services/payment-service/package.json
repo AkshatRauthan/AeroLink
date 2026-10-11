@@ -8,7 +8,7 @@
     },
     "dependencies": {
         "@aerolink/shared": "workspace:*",
-        "@grpc/grpc-js": "1.14.4",
+        "@grpc/grpc-js": "1.14.5",
         "argon2": "0.44.0",
         "dotenv": "16.3.1",
         "express": "^4.22.2",

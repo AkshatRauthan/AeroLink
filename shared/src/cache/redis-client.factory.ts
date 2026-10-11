@@ -1,6 +1,6 @@
+import { CustomError } from '@shared';
 import { Logger } from '@shared/utils';
 import Redis, { RedisOptions } from 'ioredis';
-import { CustomError } from '@shared/index';
 
 /**
  * Generic Redis client factory. Each service builds its own client from its
@@ -102,7 +102,7 @@ export const createRedisClient = (options: RedisOptions, label = 'redis'): Redis
 };
 
 /**
- * Verifies a Redis client is reachable — for startup healthchecks, mirrors
+ * Verifies a Redis client is reachable — for startup health checks, mirrors
  * connectFlightDatabases(). Throws CustomError(isOperational=true) since an
  * unreachable cache at boot is an anticipated failure, not a bug.
  */

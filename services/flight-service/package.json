@@ -3,13 +3,15 @@
     "version": "1.0.0",
     "private": true,
     "scripts": {
-        "dev": "ts-node-dev --respawn --require tsconfig-paths/register --project tsconfig.json src/index.ts",
         "build": "tsc && tsc-alias",
-        "db:migrate": "ts-node-dev --exit-child --require tsconfig-paths/register --project tsconfig.json src/infrastructure/db/migrate.ts"
+        "dev": "ts-node-dev --files --respawn --require tsconfig-paths/register --project tsconfig.json ./src/index.ts",
+        "db::cleanup": "ts-node --require tsconfig-paths/register --project tsconfig.json ./src/infrastructure/db/db.cleanup.ts",
+        "db::migration:run": "ts-node --files --require tsconfig-paths/register --project tsconfig.json ./src/infrastructure/db/migrate.ts",
+        "db::migration:create": "knex migrate:make --migrations-directory ./src/infrastructure/db/migrations -x ts"
     },
     "dependencies": {
         "@aerolink/shared": "workspace:*",
-        "@grpc/grpc-js": "1.14.4",
+        "@grpc/grpc-js": "1.14.5",
         "argon2": "0.44.0",
         "dotenv": "16.3.1",
         "express": "^4.22.2",
